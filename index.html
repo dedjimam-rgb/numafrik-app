@@ -10,6 +10,114 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" src="app.jsx"></script>
+  <script type="text/babel">
+    const API_URL = "https://numafrik-backend-production.up.railway.app/api";
+    const { useState, useEffect, useRef } = React;
+
+    function App() {
+      const [user, setUser] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [authMode, setAuthMode] = useState("login");
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [name, setName] = useState("");
+      const [error, setError] = useState("");
+
+      useEffect(() => {
+        const token = localStorage.getItem("numafrik_token");
+        if (token) {
+          fetch(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(r => r.json()).then(data => {
+            if (data.success) setUser(data.user);
+            else localStorage.removeItem("numafrik_token");
+            setLoading(false);
+          }).catch(() => setLoading(false));
+        } else { setLoading(false); }
+      }, []);
+
+      const handleAuth = async () => {
+        setError("");
+        try {
+          const path = authMode === "login" ? "/auth/login" : "/auth/register";
+          const body = authMode === "login" ? { email, password } : { email, password, name };
+          const res = await fetch(`${API_URL}${path}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem("numafrik_token", data.token);
+            setUser(data.user);
+          } else { setError(data.error || "Erreur"); }
+        } catch (e) { setError("Erreur réseau"); }
+      };
+
+      if (loading) return (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0A0E1A",color:"#00E5A0",fontSize:24,fontFamily:"sans-serif"}}>
+          Chargement...
+        </div>
+      );
+
+      if (!user) return (
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0E1A",padding:24}}>
+          <div style={{background:"#111827",border:"1px solid rgba(255,255,255,0.07)",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:400}}>
+            <h1 style={{fontFamily:"sans-serif",fontSize:26,fontWeight:800,color:"#F0F4FF",marginBottom:4}}>
+              Num<span style={{color:"#00E5A0"}}>Afrik</span>
+            </h1>
+            <p style={{fontSize:14,color:"#7B8DB0",marginBottom:24}}>
+              {authMode==="login"?"Connecte-toi à ton compte":"Crée ton compte gratuitement"}
+            </p>
+            {error && <div style={{background:"rgba(255,71,87,0.1)",border:"1px solid rgba(255,71,87,0.2)",borderRadius:10,padding:12,fontSize:13,color:"#FF4757",marginBottom:14}}>{error}</div>}
+            {authMode==="register" && (
+              <input style={{width:"100%",background:"#1C2537",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"13px 16px",color:"#F0F4FF",fontSize:14,outline:"none",marginBottom:14,display:"block"}}
+                placeholder="Nom complet" value={name} onChange={e=>setName(e.target.value)} />
+            )}
+            <input style={{width:"100%",background:"#1C2537",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"13px 16px",color:"#F0F4FF",fontSize:14,outline:"none",marginBottom:14,display:"block"}}
+              placeholder="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+            <input style={{width:"100%",background:"#1C2537",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"13px 16px",color:"#F0F4FF",fontSize:14,outline:"none",marginBottom:14,display:"block"}}
+              placeholder="Mot de passe" type="password" value={password} onChange={e=>setPassword(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
+            <button style={{width:"100%",background:"#00E5A0",color:"#0A0E1A",border:"none",borderRadius:12,padding:15,fontSize:16,fontWeight:800,cursor:"pointer",marginBottom:16}}
+              onClick={handleAuth}>
+              {authMode==="login"?"Se connecter":"Créer mon compte"}
+            </button>
+            <p style={{textAlign:"center",fontSize:14,color:"#7B8DB0"}}>
+              {authMode==="login"?"Pas de compte ? ":"Déjà inscrit ? "}
+              <span style={{color:"#00E5A0",cursor:"pointer",fontWeight:600}}
+                onClick={()=>setAuthMode(authMode==="login"?"register":"login")}>
+                {authMode==="login"?"S'inscrire":"Se connecter"}
+              </span>
+            </p>
+          </div>
+        </div>
+      );
+
+      return (
+        <div style={{minHeight:"100vh",background:"#0A0E1A",color:"#F0F4FF",fontFamily:"sans-serif",maxWidth:430,margin:"0 auto",padding:20}}>
+          <h1 style={{fontSize:24,fontWeight:800,marginBottom:8}}>
+            Bonjour {user.name?.split(" ")[0]} 👋
+          </h1>
+          <p style={{color:"#7B8DB0",marginBottom:20}}>Bienvenue sur NumAfrik !</p>
+          <div style={{background:"linear-gradient(135deg,#0D2B1F,#0A1F3A)",border:"1px solid rgba(0,229,160,0.2)",borderRadius:16,padding:20,marginBottom:20}}>
+            <div style={{fontSize:11,color:"#7B8DB0",textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Solde disponible</div>
+            <div style={{fontSize:36,fontWeight:800,color:"#00E5A0"}}>{Math.round(user.credits||0)} <span style={{fontSize:16,color:"#7B8DB0"}}>crédits</span></div>
+          </div>
+          <button style={{width:"100%",background:"#00E5A0",color:"#0A0E1A",border:"none",borderRadius:12,padding:15,fontSize:16,fontWeight:800,cursor:"pointer",marginBottom:10}}
+            onClick={()=>alert("Fonctionnalité en cours...")}>
+            ⚡ Commander un numéro
+          </button>
+          <button style={{width:"100%",background:"transparent",color:"#FF4757",border:"1px solid rgba(255,71,87,0.2)",borderRadius:12,padding:14,fontSize:15,cursor:"pointer"}}
+            onClick={()=>{localStorage.removeItem("numafrik_token");setUser(null);}}>
+            🚪 Se déconnecter
+          </button>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
 </body>
 </html>
